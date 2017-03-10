@@ -15,54 +15,99 @@
  */
 package com.alibaba.dubbo.rpc.protocol.rest;
 
-//import com.alibaba.dubbo.common.URL;
-//import com.alibaba.dubbo.common.utils.StringUtils;
-//import io.undertow.Undertow;
-//import io.undertow.servlet.api.DeploymentInfo;
-//import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
-//import org.jboss.resteasy.spi.ResteasyDeployment;
+import com.alibaba.dubbo.common.Constants;
+import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.remoting.http.servlet.BootstrapListener;
+import io.undertow.Undertow;
+import io.undertow.servlet.api.DeploymentInfo;
+import io.undertow.servlet.api.ListenerInfo;
+import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
+import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
+import org.jboss.resteasy.spi.ResteasyDeployment;
 
 /**
  * TODO this impl hasn't been well tested, and we can consider move undertow to a general remoting-http impl in the future
  *
  * @author lishen
  */
-public class UndertowServer /*implements RestServer*/ {
+public class UndertowServer extends BaseRestServer {
 
-//    // Note that UndertowJaxrsServer doesn't implement EmbeddedJaxrsServer
+    private final ResteasyDeployment deployment = new ResteasyDeployment();
+
+    private final UndertowJaxrsServer server = new UndertowJaxrsServer();
+
+    @Override
+    protected void doStart(URL url) {
+        Undertow.Builder builder = Undertow.builder()
+                .addHttpListener(url.getPort(), "0.0.0.0")
+                .setIoThreads(url.getParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS))
+                .setWorkerThreads(url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS));
+        server.start(builder);
+
+//        String contextPath = "/ucopen/v1";
+//        ResteasyDeployment deployment = new ResteasyDeployment();
+//        deployment.setApplicationClass(UndertowApplication.class.getName());
+
+        // Declare Servlet & Filters
+//        FilterInfo springCharacterEncodingFilter = new FilterInfo("springCharacterEncodingFilter",CharacterEncodingFilter.class);
+//        springCharacterEncodingFilter.setAsyncSupported(true);
+//        springCharacterEncodingFilter.addInitParam("encoding", "UTF-8");
+//        springCharacterEncodingFilter.addInitParam("forceEncoding", "true");
+
+//        FilterInfo druidWebStatFilter = new FilterInfo("DruidWebStatFilter",WebStatFilter.class);
+//        druidWebStatFilter.setAsyncSupported(true);
+//        druidWebStatFilter.addInitParam("exclusions", "/static/*,*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*");
+
+//        ServletInfo dispatcherServlet = new ServletInfo("dispatcher", DispatcherServlet.class);
+//        dispatcherServlet.setAsyncSupported(true);
+//        dispatcherServlet.setLoadOnStartup(1);
+//        dispatcherServlet.addMapping(contextPath + "/*");
+
+//        ServletInfo druidStatViewServlet = new ServletInfo("DruidStatView", StatViewServlet.class);
+//        druidStatViewServlet.setAsyncSupported(true);
+//        druidStatViewServlet.addMapping("/druid/*");
 //
-//    private final ResteasyDeployment deployment = new ResteasyDeployment();
-//
-//    private final UndertowJaxrsServer server = new UndertowJaxrsServer();
-//
-//    public void start(URL url) {
-//        deployment.start();
-//        DeploymentInfo deploymentInfo = server.undertowDeployment(deployment);
-//        deploymentInfo.setContextPath("/");
-//        deploymentInfo.setDeploymentName("dubbo-rest");
-//        deploymentInfo.setClassLoader(Thread.currentThread().getContextClassLoader());
-//        server.deploy(deploymentInfo);
-//        server.start(Undertow.builder().addHttpListener(url.getPort(), url.getHost()));
-//    }
-//
-//    public void deploy(Class resourceDef, Object resourceInstance, String contextPath) {
-//        if (StringUtils.isEmpty(contextPath)) {
-//            deployment.getRegistry().addResourceFactory(new DubboResourceFactory(resourceInstance, resourceDef));
-//        } else {
-//            deployment.getRegistry().addResourceFactory(new DubboResourceFactory(resourceInstance, resourceDef), contextPath);
-//        }
-//    }
-//
-//    public void undeploy(Class resourceDef) {
-//        deployment.getRegistry().removeRegistrations(resourceDef);
-//    }
-//
-//    public void deploy(Class resourceDef, Object resourceInstance) {
-//        deploy(resourceDef, resourceInstance, "/");
-//    }
-//
-//    public void stop() {
-//        deployment.stop();
-//        server.stop();
-//    }
+//        FilterInfo logRecordFilter = new FilterInfo("LogRecordFilter",LogRecordFilter.class);
+//        logRecordFilter.setAsyncSupported(true);
+
+//        ServletInfo viewStatusMessagesServlet = new ServletInfo("viewStatusMessagesServlet", ViewStatusMessagesServlet.class);
+//        viewStatusMessagesServlet.addMapping("/lbClassicStatus");
+
+        // Deploy Application
+        DeploymentInfo di = server.undertowDeployment(deployment);
+        di.setClassLoader(Thread.currentThread().getContextClassLoader())
+                .setContextPath("/")
+                .setDeploymentName("dubbo-rest")
+                .addListener(new ListenerInfo(BootstrapListener.class))
+                .addListener(new ListenerInfo(ResteasyBootstrap.class))
+//                .addListener(new ListenerInfo(LogbackConfigListener.class))
+//                .addInitParameter("logbackExposeWebAppRoot", "false")
+//                .addInitParameter("logbackConfigLocation", "classpath:conf/logback.xml")
+//                .addInitParameter("contextConfigLocation", "classpath*:conf/application*.xml")
+//                .addListener(new ListenerInfo(IntrospectorCleanupListener.class))
+//                .addListener(new ListenerInfo(SpringContextLoaderListener.class))
+
+//                .addFilter(springCharacterEncodingFilter)
+//                .addFilterUrlMapping("springCharacterEncodingFilter", "/*", DispatcherType.REQUEST)
+//                .addFilter(druidWebStatFilter)
+//                .addFilterUrlMapping("DruidWebStatFilter", "/*", DispatcherType.REQUEST)
+//                .addServlet(dispatcherServlet)
+//                .addServlet(druidStatViewServlet)
+//                .addFilter(logRecordFilter)
+//                .addFilterUrlMapping("LogRecordFilter", "/*", DispatcherType.REQUEST)
+//                .addServlet(viewStatusMessagesServlet)
+//                .addWelcomePage("index.jsp")
+        ;
+        server.deploy(di);
+    }
+
+    @Override
+    protected ResteasyDeployment getDeployment() {
+        return deployment;
+    }
+
+    public void stop() {
+        deployment.stop();
+        server.stop();
+    }
 }

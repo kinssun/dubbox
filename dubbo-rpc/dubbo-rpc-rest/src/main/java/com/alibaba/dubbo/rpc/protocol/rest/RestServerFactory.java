@@ -41,6 +41,8 @@ public class RestServerFactory {
             return new NettyServer();
         } else if ("sunhttp".equalsIgnoreCase(name)) {
             return new SunHttpServer();
+        } else if ("undertow".equalsIgnoreCase(name)) {
+            return new UndertowServer();
         } else {
             throw new IllegalArgumentException("Unrecognized server name: " + name);
         }
